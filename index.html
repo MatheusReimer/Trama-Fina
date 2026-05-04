@@ -492,6 +492,7 @@
       justify-content: flex-start;
       pointer-events: none;
       opacity: 0;
+      transition: opacity 0.45s ease;
     }
     .dep-item.active { pointer-events: auto; opacity: 1; }
 
@@ -500,7 +501,7 @@
       display: inline-block;
       opacity: 0;
       transform: translateY(10px);
-      transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+      transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
     }
     .dep-word.show { opacity: 1; transform: none; }
 
@@ -783,8 +784,9 @@
       .panel--p1 .p-img,
       .panel--p2 .p-img  { grid-column: 1; grid-row: 1; }
 
-      .p-text { padding: 2.4rem 2rem; }
-      .p-img img { max-height: 36vh; }
+      .p-text { padding: 2rem 2rem 2rem; justify-content: flex-start; overflow: hidden; }
+      .p-num  { display: none; }
+      .p-img img { max-height: 38vh; }
 
       .p-name { font-size: clamp(3.2rem, 12vw, 5rem); }
       .hero-title { font-size: clamp(5.5rem, 17vw, 9rem); }
@@ -896,7 +898,7 @@
           </div>
           <div class="dep-item"
                data-quote="Ganhei de presente e por muito tempo não contei que era feita à mão. O acabamento engana qualquer um."
-               data-cite="Ana L.">
+               data-cite="Jessica T.">
             <p class="dep-q"></p>
             <span class="dep-cite"></span>
           </div>
@@ -975,6 +977,7 @@
     const DARK = new Set([3]);        // panels with dark background
     const ACTIVATE_AT = [null, 0.52, 0.58, 0.42, 0.55, 0.50]; // per-panel thresholds
     const ABOUT_EXTRA = 1.5;          // extra scroll viewports held on the about panel
+    const DEP_EXTRA   = 2.0;          // extra scroll viewports for testimonial panel (3 items × ~0.67)
 
     /* ── Elements ─────────────────────────────────────────── */
     const track  = document.getElementById('scroll-track');
@@ -993,12 +996,15 @@
     /* Scroll position where panel i begins entering from below */
     function panelEnterAt(i) {
       if (i <= 1) return 0;
-      return (i > 3 ? (i - 1 + ABOUT_EXTRA) : (i - 1)) * vh;
+      let pos = (i - 1) * vh;
+      if (i > 3) pos += ABOUT_EXTRA * vh;
+      if (i > 4) pos += DEP_EXTRA * vh;
+      return pos;
     }
 
     function onResize() {
       vh = window.innerHeight;
-      track.style.height = `${(N + ABOUT_EXTRA) * vh}px`;
+      track.style.height = `${(N + ABOUT_EXTRA + DEP_EXTRA) * vh}px`;
       smooth = raw;            // prevent jump on resize
     }
     onResize();
@@ -1124,6 +1130,18 @@
         });
       }
 
+      /* Dep carousel: scroll advances the index during panel 4 linger */
+      const depLingStart = panelEnterAt(4) + vh;
+      if (smooth >= depLingStart && depItems.length) {
+        const dp        = clamp((smooth - depLingStart) / (DEP_EXTRA * vh), 0, 1);
+        const targetIdx = Math.min(Math.floor(dp * depItems.length), depItems.length - 1);
+        if (targetIdx !== depIdx && !depBusy) {
+          goToDep(targetIdx);
+          clearTimeout(depTimer);  // scroll drives index; suppress auto-advance
+          depTimer = null;
+        }
+      }
+
       requestAnimationFrame(tick);
     }
 
@@ -1140,7 +1158,7 @@
       const q    = item.querySelector('.dep-q');
       const cite = item.querySelector('.dep-cite');
       q.innerHTML = item.dataset.quote.split(' ')
-        .map((w, i) => `<span class="dep-word show" data-d="${i * 44}">${w}&nbsp;</span>`)
+        .map((w, i) => `<span class="dep-word show" data-d="${i * 28}">${w}&nbsp;</span>`)
         .join('');
       cite.textContent = '— ' + item.dataset.cite;
       cite.classList.add('show');
@@ -1160,7 +1178,7 @@
       const words = item.querySelector('.dep-q').querySelectorAll('.dep-word');
       words.forEach(w => setTimeout(() => w.classList.add('show'), +w.dataset.d));
       const lastD = words.length ? +words[words.length - 1].dataset.d : 0;
-      setTimeout(() => item.querySelector('.dep-cite').classList.add('show'), lastD + 140);
+      setTimeout(() => item.querySelector('.dep-cite').classList.add('show'), lastD + 90);
     }
 
     function goToDep(next) {
@@ -1173,7 +1191,7 @@
         depBulls.forEach((b, k) => b.classList.toggle('on', k === depIdx));
         depCurEl.textContent = String(depIdx + 1).padStart(2, '0');
         depBusy = false;
-      }, 360);
+      }, 180);
       clearTimeout(depTimer);
       depTimer = setTimeout(() => goToDep((depIdx + 1) % depItems.length), 7800);
     }
