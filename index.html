@@ -1172,7 +1172,7 @@
         for (let i = 1; i < N; i++) {
           const progress = (intended - panelEnterAt(i)) / vh;
           if (progress > 0 && progress < 1) {
-            const target = progress >= 0.5 ? i : i - 1;
+            const target = progress >= 0.25 ? i : i - 1;
             raw = target === 0 ? 0 : panelEnterAt(target) + vh;
             return;
           }
@@ -1258,15 +1258,17 @@
         });
       }
 
-      /* Dep carousel: scroll advances the index during panel 4 linger */
-      const depLingStart = panelEnterAt(4) + vh;
-      if (smooth >= depLingStart && depItems.length) {
-        const dp        = clamp((smooth - depLingStart) / (DEP_EXTRA * vh), 0, 1);
-        const targetIdx = Math.min(Math.floor(dp * depItems.length), depItems.length - 1);
-        if (targetIdx !== depIdx && !depBusy) {
-          goToDep(targetIdx);
-          clearTimeout(depTimer);  // scroll drives index; suppress auto-advance
-          depTimer = null;
+      /* Dep carousel: scroll advances the index during panel 4 linger (desktop only) */
+      if (!touchMode) {
+        const depLingStart = panelEnterAt(4) + vh;
+        if (smooth >= depLingStart && depItems.length) {
+          const dp        = clamp((smooth - depLingStart) / (DEP_EXTRA * vh), 0, 1);
+          const targetIdx = Math.min(Math.floor(dp * depItems.length), depItems.length - 1);
+          if (targetIdx !== depIdx && !depBusy) {
+            goToDep(targetIdx);
+            clearTimeout(depTimer);  // scroll drives index; suppress auto-advance
+            depTimer = null;
+          }
         }
       }
 
