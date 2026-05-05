@@ -1151,12 +1151,14 @@
 
       const maxRaw = () => (N - 1 + ABOUT_EXTRA + DEP_EXTRA) * vh;
 
-      let _tsY   = 0; // touchstart clientY
-      let _tsRaw = 0; // raw at touchstart
+      let _tsY       = 0; // touchstart clientY
+      let _tsRaw     = 0; // raw at touchstart
+      let _tsPanel   = 0; // activeI frozen at touchstart — prevents mid-swipe activation bugs
 
       document.addEventListener('touchstart', e => {
-        _tsY   = e.touches[0].clientY;
-        _tsRaw = raw;
+        _tsY     = e.touches[0].clientY;
+        _tsRaw   = raw;
+        _tsPanel = activeI;
       }, { passive: true });
 
       /* touchmove drives raw directly — no native scroll involved */
@@ -1166,18 +1168,14 @@
       }, { passive: false });
 
       document.addEventListener('touchend', e => {
-        const intended = _tsRaw + (_tsY - e.changedTouches[0].clientY);
+        const dy = _tsY - e.changedTouches[0].clientY; // + = swiped down
 
-        /* 50% threshold: snap forward if past halfway, snap back if not */
-        for (let i = 1; i < N; i++) {
-          const progress = (intended - panelEnterAt(i)) / vh;
-          if (progress > 0 && progress < 1) {
-            const target = progress >= 0.25 ? i : i - 1;
-            raw = target === 0 ? 0 : panelEnterAt(target) + vh;
-            return;
-          }
-        }
-        /* Already at a clean snap — keep raw where it is; smooth lerps there */
+        /* 25% of screen height = committed swipe; anything less snaps back */
+        const target = Math.abs(dy) < vh * 0.25
+          ? _tsPanel
+          : clamp(_tsPanel + (dy > 0 ? 1 : -1), 0, N - 1);
+
+        raw = target === 0 ? 0 : panelEnterAt(target) + vh;
       }, { passive: true });
     }
 
