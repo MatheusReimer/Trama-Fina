@@ -1144,26 +1144,37 @@
     });
 
     /* ── Mobile snap-on-lift ──────────────────────────────── */
-    let _touchStartY     = 0;
-    let _touchStartTime  = 0;
-    let _touchStartPanel = 0; // activeI at the moment the finger lands
+    let _touchStartY      = 0;
+    let _touchLastY       = 0;
+    let _touchStartScroll = 0;
 
     window.addEventListener('touchstart', e => {
-      _touchStartY     = e.touches[0].clientY;
-      _touchStartTime  = Date.now();
-      _touchStartPanel = activeI; // capture before the swipe can change activeI
+      _touchStartY      = e.touches[0].clientY;
+      _touchLastY       = e.touches[0].clientY;
+      _touchStartScroll = window.scrollY;
     }, { passive: true });
 
-    window.addEventListener('touchend', e => {
-      const dy = _touchStartY - e.changedTouches[0].clientY; // + = scrolled down
-      const THRESHOLD = 30; // px — anything below is a tap, not a swipe
+    window.addEventListener('touchmove', e => {
+      _touchLastY = e.touches[0].clientY;
+    }, { passive: true });
 
-      const target = Math.abs(dy) < THRESHOLD
-        ? _touchStartPanel
-        : clamp(_touchStartPanel + (dy > 0 ? 1 : -1), 0, N - 1);
+    window.addEventListener('touchend', () => {
+      /* Reconstruct where the finger actually dragged to, ignoring momentum */
+      const fingerDelta    = _touchStartY - _touchLastY; // + = dragged down
+      const intendedScroll = _touchStartScroll + fingerDelta;
 
-      const top = target === 0 ? 0 : panelEnterAt(target) + vh;
-      window.scrollTo(0, top); // instant — cancels browser momentum
+      for (let i = 1; i < N; i++) {
+        const progress = (intendedScroll - panelEnterAt(i)) / vh;
+        if (progress > 0 && progress < 1) {
+          const target = progress >= 0.5 ? i : i - 1;
+          const top    = target === 0 ? 0 : panelEnterAt(target) + vh;
+          window.scrollTo(0, top); // instant — cancels browser momentum
+          return;
+        }
+      }
+      /* Not mid-transition — snap to the panel we started on */
+      const top = _touchStartScroll === 0 ? 0 : panelEnterAt(activeI) + vh;
+      window.scrollTo(0, top);
     }, { passive: true });
 
     /* ── Product image parallax cache ───────────────────────── */
