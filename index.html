@@ -1162,7 +1162,10 @@
         if (progress > 0 && progress < 1) {
           // mid-transition: snap by velocity if a swipe, else snap to nearest
           const snapForward = Math.abs(velocity) > 0.25 ? velocity > 0 : progress >= 0.5;
-          goTo(snapForward ? i : i - 1);
+          const target = snapForward ? i : i - 1;
+          const top = target === 0 ? 0 : panelEnterAt(target) + vh;
+          // Instant scroll cancels browser momentum; lerp loop animates the panels smoothly
+          window.scrollTo(0, top);
           return;
         }
       }
