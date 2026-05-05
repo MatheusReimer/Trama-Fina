@@ -1144,21 +1144,23 @@
     });
 
     /* ── Mobile snap-on-lift ──────────────────────────────── */
-    let _touchStartY      = 0;
-    let _touchStartTime   = 0;
+    let _touchStartY     = 0;
+    let _touchStartTime  = 0;
+    let _touchStartPanel = 0; // activeI at the moment the finger lands
 
     window.addEventListener('touchstart', e => {
-      _touchStartY    = e.touches[0].clientY;
-      _touchStartTime = Date.now();
+      _touchStartY     = e.touches[0].clientY;
+      _touchStartTime  = Date.now();
+      _touchStartPanel = activeI; // capture before the swipe can change activeI
     }, { passive: true });
 
     window.addEventListener('touchend', e => {
       const dy = _touchStartY - e.changedTouches[0].clientY; // + = scrolled down
-      const THRESHOLD = 30; // px — anything below this is a tap, not a swipe
+      const THRESHOLD = 30; // px — anything below is a tap, not a swipe
 
       const target = Math.abs(dy) < THRESHOLD
-        ? activeI
-        : clamp(activeI + (dy > 0 ? 1 : -1), 0, N - 1);
+        ? _touchStartPanel
+        : clamp(_touchStartPanel + (dy > 0 ? 1 : -1), 0, N - 1);
 
       const top = target === 0 ? 0 : panelEnterAt(target) + vh;
       window.scrollTo(0, top); // instant — cancels browser momentum
