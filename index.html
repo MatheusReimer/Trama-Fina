@@ -1153,22 +1153,15 @@
     }, { passive: true });
 
     window.addEventListener('touchend', e => {
-      const dy       = _touchStartY - e.changedTouches[0].clientY; // + = scrolled down
-      const velocity = dy / Math.max(Date.now() - _touchStartTime, 1); // px/ms
-      const cur      = window.scrollY;
+      const dy = _touchStartY - e.changedTouches[0].clientY; // + = scrolled down
+      const THRESHOLD = 30; // px — anything below this is a tap, not a swipe
 
-      for (let i = 1; i < N; i++) {
-        const progress = (cur - panelEnterAt(i)) / vh;
-        if (progress > 0 && progress < 1) {
-          // mid-transition: snap by velocity if a swipe, else snap to nearest
-          const snapForward = Math.abs(velocity) > 0.25 ? velocity > 0 : progress >= 0.5;
-          const target = snapForward ? i : i - 1;
-          const top = target === 0 ? 0 : panelEnterAt(target) + vh;
-          // Instant scroll cancels browser momentum; lerp loop animates the panels smoothly
-          window.scrollTo(0, top);
-          return;
-        }
-      }
+      const target = Math.abs(dy) < THRESHOLD
+        ? activeI
+        : clamp(activeI + (dy > 0 ? 1 : -1), 0, N - 1);
+
+      const top = target === 0 ? 0 : panelEnterAt(target) + vh;
+      window.scrollTo(0, top); // instant — cancels browser momentum
     }, { passive: true });
 
     /* ── Product image parallax cache ───────────────────────── */
