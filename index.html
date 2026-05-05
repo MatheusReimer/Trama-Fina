@@ -1101,7 +1101,8 @@
     window.addEventListener('resize', onResize);
 
     /* ── Scroll ───────────────────────────────────────────── */
-    window.addEventListener('scroll', () => { raw = window.scrollY; }, { passive: true });
+    let touchMode = false; // when true, touch drives raw directly; ignore window.scrollY
+    window.addEventListener('scroll', () => { if (!touchMode) raw = window.scrollY; }, { passive: true });
 
     /* ── Helpers ──────────────────────────────────────────── */
     const lerp  = (a, b, t) => a + (b - a) * t;
@@ -1121,7 +1122,8 @@
     /* ── Navigate to panel ────────────────────────────────── */
     function goTo(i) {
       const top = i === 0 ? 0 : panelEnterAt(i) + vh;
-      window.scrollTo({ top, behavior: 'smooth' });
+      if (touchMode) { raw = top; }          // touch mode: lerp handles animation
+      else { window.scrollTo({ top, behavior: 'smooth' }); }
     }
 
     document.querySelectorAll('[data-go]').forEach(el => {
@@ -1143,39 +1145,41 @@
       }
     });
 
-    /* ── Mobile snap-on-lift ──────────────────────────────── */
-    let _touchStartY      = 0;
-    let _touchLastY       = 0;
-    let _touchStartScroll = 0;
+    /* ── Mobile virtual scroll (bypasses iOS momentum entirely) ── */
+    if ('ontouchstart' in window) {
+      touchMode = true;
 
-    window.addEventListener('touchstart', e => {
-      _touchStartY      = e.touches[0].clientY;
-      _touchLastY       = e.touches[0].clientY;
-      _touchStartScroll = window.scrollY;
-    }, { passive: true });
+      const maxRaw = () => (N - 1 + ABOUT_EXTRA + DEP_EXTRA) * vh;
 
-    window.addEventListener('touchmove', e => {
-      _touchLastY = e.touches[0].clientY;
-    }, { passive: true });
+      let _tsY   = 0; // touchstart clientY
+      let _tsRaw = 0; // raw at touchstart
 
-    window.addEventListener('touchend', () => {
-      /* Reconstruct where the finger actually dragged to, ignoring momentum */
-      const fingerDelta    = _touchStartY - _touchLastY; // + = dragged down
-      const intendedScroll = _touchStartScroll + fingerDelta;
+      document.addEventListener('touchstart', e => {
+        _tsY   = e.touches[0].clientY;
+        _tsRaw = raw;
+      }, { passive: true });
 
-      for (let i = 1; i < N; i++) {
-        const progress = (intendedScroll - panelEnterAt(i)) / vh;
-        if (progress > 0 && progress < 1) {
-          const target = progress >= 0.5 ? i : i - 1;
-          const top    = target === 0 ? 0 : panelEnterAt(target) + vh;
-          window.scrollTo(0, top); // instant — cancels browser momentum
-          return;
+      /* touchmove drives raw directly — no native scroll involved */
+      document.addEventListener('touchmove', e => {
+        e.preventDefault();
+        raw = clamp(_tsRaw + (_tsY - e.touches[0].clientY), 0, maxRaw());
+      }, { passive: false });
+
+      document.addEventListener('touchend', e => {
+        const intended = _tsRaw + (_tsY - e.changedTouches[0].clientY);
+
+        /* 50% threshold: snap forward if past halfway, snap back if not */
+        for (let i = 1; i < N; i++) {
+          const progress = (intended - panelEnterAt(i)) / vh;
+          if (progress > 0 && progress < 1) {
+            const target = progress >= 0.5 ? i : i - 1;
+            raw = target === 0 ? 0 : panelEnterAt(target) + vh;
+            return;
+          }
         }
-      }
-      /* Not mid-transition — snap to the panel we started on */
-      const top = _touchStartScroll === 0 ? 0 : panelEnterAt(activeI) + vh;
-      window.scrollTo(0, top);
-    }, { passive: true });
+        /* Already at a clean snap — keep raw where it is; smooth lerps there */
+      }, { passive: true });
+    }
 
     /* ── Product image parallax cache ───────────────────────── */
     const productImgs = [1, 2].map(i => panels[i].querySelector('.p-img img'));
