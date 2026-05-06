@@ -886,7 +886,21 @@
       .dep-inner { padding: 2.5rem 2rem; }
       .dep-q { font-size: clamp(1.5rem, 6vw, 2.4rem); }
 
-      .panel-footer { padding: 1.5rem 2rem; }
+      .panel-footer {
+        padding: 1.5rem 2rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .pf-maker {
+        position: static;
+        transform: none;
+        order: -1;
+      }
+
+      /* About quote: show at full opacity on mobile (no scroll-driven fade) */
+      .about-quote .ql-in { color: rgba(247,244,239,0.88); }
+      .aq-char { color: inherit !important; }
     }
   </style>
 </head>
@@ -1240,8 +1254,8 @@
       /* Hero activates when we haven't scrolled far enough to trigger panel 1 */
       if (smooth < vh * ACTIVATE_AT[1]) activate(0);
 
-      /* About quote: character-by-character colour sweep (scroll-driven) */
-      if (aboutChars.length) {
+      /* About quote: character-by-character colour sweep (scroll-driven, desktop only) */
+      if (!touchMode && aboutChars.length) {
         const ap     = clamp((smooth - 2 * vh) / ((1 + ABOUT_EXTRA) * vh), 0, 1);
         const total  = aboutChars.length;
         const cursor = ap * (total + 4) - 2; // leads 2 chars ahead, trails 2 behind
